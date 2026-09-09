@@ -235,10 +235,10 @@ class OrderBook {
     // Lowest price first.
     map<int64_t, deque<Order>> sellOrders;
 
-    // Successfully executed trades
+    // Executed trades
     vector<Trade> trades;
 
-    // Automatically generated trade ID
+    // Next trade ID
     uint64_t nextTradeId;
 
 public:
@@ -260,10 +260,10 @@ public:
     // Check whether matching is possible
     bool canMatch() const;
 
-    // Match orders and create trades
+    // Execute matching
     void matchOrders();
 
-    // Print executed trades
+    // Print trade history
     void printTrades() const;
 };
 
@@ -332,13 +332,14 @@ void OrderBook::printBuyOrders() const {
              << entry.second.size()
              << endl;
 
-        // Print individual orders at this price
         for (const auto& order : entry.second) {
 
             cout << "    Order ID: "
                  << order.getOrderId()
                  << " | Quantity: "
                  << order.getQuantity()
+                 << " | Timestamp: "
+                 << order.getTimestamp()
                  << endl;
         }
     }
@@ -358,19 +359,20 @@ void OrderBook::printSellOrders() const {
              << entry.second.size()
              << endl;
 
-        // Print individual orders at this price
         for (const auto& order : entry.second) {
 
             cout << "    Order ID: "
                  << order.getOrderId()
                  << " | Quantity: "
                  << order.getQuantity()
+                 << " | Timestamp: "
+                 << order.getTimestamp()
                  << endl;
         }
     }
 }
 
-// Check whether a trade can happen
+// Check if matching is possible
 
 bool OrderBook::canMatch() const {
 
@@ -378,8 +380,11 @@ bool OrderBook::canMatch() const {
         return false;
     }
 
-    int64_t bestBuyPrice = buyOrders.begin()->first;
-    int64_t bestSellPrice = sellOrders.begin()->first;
+    int64_t bestBuyPrice =
+        buyOrders.begin()->first;
+
+    int64_t bestSellPrice =
+        sellOrders.begin()->first;
 
     return bestBuyPrice >= bestSellPrice;
 }
@@ -392,22 +397,22 @@ void OrderBook::matchOrders() {
 
     while (canMatch()) {
 
-        // Highest-priority BUY order
+        // Best BUY order
         Order& buyOrder =
             buyOrders.begin()->second.front();
 
-        // Highest-priority SELL order
+        // Best SELL order
         Order& sellOrder =
             sellOrders.begin()->second.front();
 
-        // Smaller quantity determines trade quantity
+        // Trade quantity = smaller quantity
         uint64_t tradeQuantity =
             min(
                 buyOrder.getQuantity(),
                 sellOrder.getQuantity()
             );
 
-        // Save values before potentially removing orders
+        // Save information before modifying/removing orders
         uint64_t buyOrderId =
             buyOrder.getOrderId();
 
@@ -420,14 +425,12 @@ void OrderBook::matchOrders() {
         int64_t tradePrice =
             sellOrder.getPrice();
 
-        // For now we use the incoming order's timestamp.
-        // We'll replace this with proper execution timestamps later.
         uint64_t tradeTimestamp =
             sellOrder.getTimestamp();
 
-        // --------------------------------------------------------
+        // ====================================================
         // CREATE TRADE
-        // --------------------------------------------------------
+        // ====================================================
 
         Trade trade(
             nextTradeId++,
@@ -441,9 +444,9 @@ void OrderBook::matchOrders() {
 
         trades.push_back(trade);
 
-        // --------------------------------------------------------
+        // ====================================================
         // DISPLAY TRADE
-        // --------------------------------------------------------
+        // ====================================================
 
         cout << "\n==================== TRADE EXECUTED ====================\n";
 
@@ -471,24 +474,24 @@ void OrderBook::matchOrders() {
              << trade.getQuantity()
              << endl;
 
-        // --------------------------------------------------------
-        // REDUCE ORDER QUANTITIES
-        // --------------------------------------------------------
+        // ====================================================
+        // REDUCE QUANTITIES
+        // ====================================================
 
         buyOrder.reduceQuantity(tradeQuantity);
-
         sellOrder.reduceQuantity(tradeQuantity);
 
-        // Check which orders are completely filled
+        // Check whether completely filled
+
         bool buyFilled =
             (buyOrder.getQuantity() == 0);
 
         bool sellFilled =
             (sellOrder.getQuantity() == 0);
 
-        // --------------------------------------------------------
+        // ====================================================
         // REMOVE FILLED BUY ORDER
-        // --------------------------------------------------------
+        // ====================================================
 
         if (buyFilled) {
 
@@ -499,9 +502,9 @@ void OrderBook::matchOrders() {
             }
         }
 
-        // --------------------------------------------------------
+        // ====================================================
         // REMOVE FILLED SELL ORDER
-        // --------------------------------------------------------
+        // ====================================================
 
         if (sellFilled) {
 
@@ -515,7 +518,7 @@ void OrderBook::matchOrders() {
 }
 
 // ============================================================
-// PRINT TRADE HISTORY
+// TRADE HISTORY
 // ============================================================
 
 void OrderBook::printTrades() const {
@@ -524,7 +527,8 @@ void OrderBook::printTrades() const {
 
     if (trades.empty()) {
 
-        cout << "No trades executed." << endl;
+        cout << "No trades executed."
+             << endl;
 
         return;
     }
@@ -533,14 +537,19 @@ void OrderBook::printTrades() const {
 
         cout << "Trade ID: "
              << trade.getTradeId()
+
              << " | Buy Order: "
              << trade.getBuyOrderId()
+
              << " | Sell Order: "
              << trade.getSellOrderId()
+
              << " | Price: "
              << trade.getPrice()
+
              << " | Quantity: "
              << trade.getQuantity()
+
              << endl;
     }
 }
@@ -551,11 +560,13 @@ void OrderBook::printTrades() const {
 
 int main() {
 
+    // ========================================================
+    // NORMAL MATCHING TEST
+    // ========================================================
+
     OrderBook book;
 
-    // ========================================================
-    // BUY ORDERS
-    // ========================================================
+    // ---------------- BUY ORDERS ----------------
 
     Order order1(
         1001,
@@ -590,9 +601,7 @@ int main() {
         123456791
     );
 
-    // ========================================================
-    // SELL ORDERS
-    // ========================================================
+    // ---------------- SELL ORDERS ----------------
 
     Order sellOrder1(
         2001,
@@ -616,9 +625,7 @@ int main() {
         123456793
     );
 
-    // ========================================================
-    // ADD ORDERS TO ORDER BOOK
-    // ========================================================
+    // ---------------- ADD ORDERS ----------------
 
     book.addOrder(order1);
     book.addOrder(order2);
@@ -627,60 +634,126 @@ int main() {
     book.addOrder(sellOrder1);
     book.addOrder(sellOrder2);
 
-    // ========================================================
-    // BEFORE MATCHING
-    // ========================================================
+    // ---------------- BEFORE MATCHING ----------------
 
     cout << "\n================ BEFORE MATCHING ================\n";
 
     book.printBuyOrders();
     book.printSellOrders();
 
-    cout << "\nBuy orders: "
-         << book.getBuyOrderCount()
-         << endl;
-
-    cout << "Sell orders: "
-         << book.getSellOrderCount()
-         << endl;
-
-    // ========================================================
-    // MATCH ORDERS
-    // ========================================================
+    // ---------------- MATCH ----------------
 
     if (book.canMatch()) {
 
         cout << "\nA TRADE CAN HAPPEN!\n";
 
         book.matchOrders();
+
     }
     else {
 
         cout << "\nNO TRADE POSSIBLE.\n";
     }
 
-    // ========================================================
-    // AFTER MATCHING
-    // ========================================================
+    // ---------------- AFTER MATCHING ----------------
 
     cout << "\n================ AFTER MATCHING ================\n";
 
     book.printBuyOrders();
     book.printSellOrders();
 
-    cout << "\nBuy orders remaining: "
-         << book.getBuyOrderCount()
-         << endl;
-
-    cout << "Sell orders remaining: "
-         << book.getSellOrderCount()
-         << endl;
-
-    // ========================================================
-    // TRADE HISTORY
-    // ========================================================
+    // ---------------- TRADE HISTORY ----------------
 
     book.printTrades();
+
+
+    // ========================================================
+    // FIFO / PRICE-TIME PRIORITY TEST
+    // ========================================================
+
+    cout << "\n\n================ FIFO TEST ================\n";
+
+    OrderBook fifoBook;
+
+    // Three BUY orders at exactly the same price
+
+    Order fifoBuy1(
+        3001,
+        40,
+        "AAPL",
+        Side::BUY,
+        OrderType::LIMIT,
+        18000,
+        100,
+        100
+    );
+
+    Order fifoBuy2(
+        3002,
+        41,
+        "AAPL",
+        Side::BUY,
+        OrderType::LIMIT,
+        18000,
+        200,
+        101
+    );
+
+    Order fifoBuy3(
+        3003,
+        42,
+        "AAPL",
+        Side::BUY,
+        OrderType::LIMIT,
+        18000,
+        150,
+        102
+    );
+
+    // SELL 250 shares at the same price
+
+    Order fifoSell(
+        4001,
+        50,
+        "AAPL",
+        Side::SELL,
+        OrderType::LIMIT,
+        18000,
+        250,
+        103
+    );
+
+    // Add BUY orders in arrival order
+
+    fifoBook.addOrder(fifoBuy1);
+    fifoBook.addOrder(fifoBuy2);
+    fifoBook.addOrder(fifoBuy3);
+
+    // Add SELL order
+
+    fifoBook.addOrder(fifoSell);
+
+    // Show book before FIFO matching
+
+    cout << "\nBefore FIFO matching:" << endl;
+
+    fifoBook.printBuyOrders();
+    fifoBook.printSellOrders();
+
+    // Execute matching
+
+    fifoBook.matchOrders();
+
+    // Show remaining orders
+
+    cout << "\nAfter FIFO matching:" << endl;
+
+    fifoBook.printBuyOrders();
+    fifoBook.printSellOrders();
+
+    // Show trade history
+
+    fifoBook.printTrades();
 
     return 0;
 }
