@@ -1,0 +1,12 @@
+# Compiled executable
+main.exe
+
+# VS Code settings
+.vscode/
+
+# C++ object files
+*.o
+*.obj
+
+# Other executables
+*.exe
