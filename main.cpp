@@ -10,6 +10,7 @@
 
 using namespace std;
 
+
 // ============================================================
 // ORDER TYPES
 // ============================================================
@@ -23,6 +24,7 @@ enum class OrderType {
     MARKET,
     LIMIT
 };
+
 
 // ============================================================
 // ORDER
@@ -69,6 +71,7 @@ public:
     void reduceQuantity(uint64_t amount);
 };
 
+
 // ============================================================
 // ORDER IMPLEMENTATION
 // ============================================================
@@ -94,37 +97,46 @@ Order::Order(
 {
 }
 
+
 uint64_t Order::getOrderId() const {
     return orderId;
 }
+
 
 uint64_t Order::getTraderId() const {
     return traderId;
 }
 
+
 string Order::getSymbol() const {
     return symbol;
 }
+
 
 Side Order::getSide() const {
     return side;
 }
 
+
 OrderType Order::getOrderType() const {
     return orderType;
 }
+
 
 int64_t Order::getPrice() const {
     return price;
 }
 
+
 uint64_t Order::getQuantity() const {
     return quantity;
 }
 
+
 uint64_t Order::getTimestamp() const {
     return timestamp;
 }
+
 
 void Order::reduceQuantity(uint64_t amount) {
 
@@ -132,6 +144,7 @@ void Order::reduceQuantity(uint64_t amount) {
         quantity -= amount;
     }
 }
+
 
 // ============================================================
 // TRADE
@@ -172,6 +185,7 @@ public:
     uint64_t getTimestamp() const;
 };
 
+
 // ============================================================
 // TRADE IMPLEMENTATION
 // ============================================================
@@ -195,33 +209,41 @@ Trade::Trade(
 {
 }
 
+
 uint64_t Trade::getTradeId() const {
     return tradeId;
 }
+
 
 uint64_t Trade::getBuyOrderId() const {
     return buyOrderId;
 }
 
+
 uint64_t Trade::getSellOrderId() const {
     return sellOrderId;
 }
+
 
 string Trade::getSymbol() const {
     return symbol;
 }
 
+
 int64_t Trade::getPrice() const {
     return price;
 }
+
 
 uint64_t Trade::getQuantity() const {
     return quantity;
 }
 
+
 uint64_t Trade::getTimestamp() const {
     return timestamp;
 }
+
 
 // ============================================================
 // ORDER BOOK
@@ -261,6 +283,13 @@ public:
     // Cancel order by ID
     bool cancelOrder(uint64_t orderId);
 
+    // Modify order
+    bool modifyOrder(
+        uint64_t orderId,
+        int64_t newPrice,
+        uint64_t newQuantity
+    );
+
     // Count orders
     size_t getBuyOrderCount() const;
     size_t getSellOrderCount() const;
@@ -277,6 +306,7 @@ public:
     void printTrades() const;
 };
 
+
 // ============================================================
 // ORDER BOOK CONSTRUCTOR
 // ============================================================
@@ -285,6 +315,7 @@ OrderBook::OrderBook()
     : nextTradeId(1)
 {
 }
+
 
 // ============================================================
 // ADD ORDER
@@ -308,6 +339,7 @@ void OrderBook::addOrder(const Order& order) {
         make_pair(order.getSide(), order.getPrice());
 }
 
+
 // ============================================================
 // SUBMIT ORDER
 // ============================================================
@@ -326,11 +358,13 @@ void OrderBook::submitOrder(const Order& order) {
     // Local copy because remaining quantity can change.
     Order incomingOrder = order;
 
+
     // ========================================================
     // MATCH INCOMING ORDER
     // ========================================================
 
     while (incomingOrder.getQuantity() > 0) {
+
 
         // ====================================================
         // INCOMING BUY
@@ -343,18 +377,22 @@ void OrderBook::submitOrder(const Order& order) {
                 break;
             }
 
+
             // Best SELL = lowest price
             int64_t bestSellPrice =
                 sellOrders.begin()->first;
+
 
             // BUY price must be >= SELL price
             if (incomingOrder.getPrice() < bestSellPrice) {
                 break;
             }
 
+
             // Oldest SELL order at best price
             Order& restingOrder =
                 sellOrders.begin()->second.front();
+
 
             // Determine trade quantity
             uint64_t tradeQuantity =
@@ -363,9 +401,11 @@ void OrderBook::submitOrder(const Order& order) {
                     restingOrder.getQuantity()
                 );
 
+
             // Resting order determines execution price
             int64_t tradePrice =
                 restingOrder.getPrice();
+
 
             // Save IDs before any removal
             uint64_t buyOrderId =
@@ -379,6 +419,7 @@ void OrderBook::submitOrder(const Order& order) {
 
             uint64_t tradeTimestamp =
                 incomingOrder.getTimestamp();
+
 
             // =================================================
             // CREATE TRADE
@@ -395,6 +436,7 @@ void OrderBook::submitOrder(const Order& order) {
             );
 
             trades.push_back(trade);
+
 
             cout << "\n==================== TRADE EXECUTED ====================\n";
 
@@ -422,12 +464,14 @@ void OrderBook::submitOrder(const Order& order) {
                  << trade.getQuantity()
                  << endl;
 
+
             // =================================================
             // REDUCE QUANTITIES
             // =================================================
 
             incomingOrder.reduceQuantity(tradeQuantity);
             restingOrder.reduceQuantity(tradeQuantity);
+
 
             // If resting order is fully filled,
             // remove it from the book and index.
@@ -446,6 +490,7 @@ void OrderBook::submitOrder(const Order& order) {
             }
         }
 
+
         // ====================================================
         // INCOMING SELL
         // ====================================================
@@ -457,18 +502,22 @@ void OrderBook::submitOrder(const Order& order) {
                 break;
             }
 
+
             // Best BUY = highest price
             int64_t bestBuyPrice =
                 buyOrders.begin()->first;
+
 
             // SELL price must be <= BUY price
             if (incomingOrder.getPrice() > bestBuyPrice) {
                 break;
             }
 
+
             // Oldest BUY order at best price
             Order& restingOrder =
                 buyOrders.begin()->second.front();
+
 
             // Determine trade quantity
             uint64_t tradeQuantity =
@@ -477,9 +526,11 @@ void OrderBook::submitOrder(const Order& order) {
                     restingOrder.getQuantity()
                 );
 
+
             // Resting BUY determines execution price
             int64_t tradePrice =
                 restingOrder.getPrice();
+
 
             // Save IDs before removal
             uint64_t buyOrderId =
@@ -493,6 +544,7 @@ void OrderBook::submitOrder(const Order& order) {
 
             uint64_t tradeTimestamp =
                 incomingOrder.getTimestamp();
+
 
             // =================================================
             // CREATE TRADE
@@ -509,6 +561,7 @@ void OrderBook::submitOrder(const Order& order) {
             );
 
             trades.push_back(trade);
+
 
             cout << "\n==================== TRADE EXECUTED ====================\n";
 
@@ -536,6 +589,7 @@ void OrderBook::submitOrder(const Order& order) {
                  << trade.getQuantity()
                  << endl;
 
+
             // =================================================
             // REDUCE QUANTITIES
             // =================================================
@@ -543,8 +597,9 @@ void OrderBook::submitOrder(const Order& order) {
             incomingOrder.reduceQuantity(tradeQuantity);
             restingOrder.reduceQuantity(tradeQuantity);
 
+
             // If resting order is fully filled,
-            // remove it from book and index.
+            // remove it from the book and index.
             if (restingOrder.getQuantity() == 0) {
 
                 uint64_t filledOrderId =
@@ -560,6 +615,7 @@ void OrderBook::submitOrder(const Order& order) {
             }
         }
     }
+
 
     // ========================================================
     // REMAINING INCOMING QUANTITY
@@ -585,6 +641,7 @@ void OrderBook::submitOrder(const Order& order) {
     }
 }
 
+
 // ============================================================
 // CANCEL ORDER
 // ============================================================
@@ -594,17 +651,20 @@ bool OrderBook::cancelOrder(uint64_t orderId) {
     // Find order in index
     auto indexIt = orderIndex.find(orderId);
 
+
     // Order does not exist
     if (indexIt == orderIndex.end()) {
 
         return false;
     }
 
+
     Side side =
         indexIt->second.first;
 
     int64_t price =
         indexIt->second.second;
+
 
     // ========================================================
     // CANCEL BUY
@@ -619,8 +679,10 @@ bool OrderBook::cancelOrder(uint64_t orderId) {
             return false;
         }
 
+
         deque<Order>& orders =
             priceIt->second;
+
 
         for (
             auto orderIt = orders.begin();
@@ -632,10 +694,12 @@ bool OrderBook::cancelOrder(uint64_t orderId) {
 
                 orders.erase(orderIt);
 
+
                 // Remove empty price level
                 if (orders.empty()) {
                     buyOrders.erase(priceIt);
                 }
+
 
                 // Remove from index
                 orderIndex.erase(indexIt);
@@ -644,6 +708,7 @@ bool OrderBook::cancelOrder(uint64_t orderId) {
             }
         }
     }
+
 
     // ========================================================
     // CANCEL SELL
@@ -658,8 +723,10 @@ bool OrderBook::cancelOrder(uint64_t orderId) {
             return false;
         }
 
+
         deque<Order>& orders =
             priceIt->second;
+
 
         for (
             auto orderIt = orders.begin();
@@ -671,10 +738,12 @@ bool OrderBook::cancelOrder(uint64_t orderId) {
 
                 orders.erase(orderIt);
 
+
                 // Remove empty price level
                 if (orders.empty()) {
                     sellOrders.erase(priceIt);
                 }
+
 
                 // Remove from index
                 orderIndex.erase(indexIt);
@@ -684,8 +753,212 @@ bool OrderBook::cancelOrder(uint64_t orderId) {
         }
     }
 
+
     return false;
 }
+
+
+// ============================================================
+// MODIFY ORDER
+// ============================================================
+
+bool OrderBook::modifyOrder(
+    uint64_t orderId,
+    int64_t newPrice,
+    uint64_t newQuantity
+) {
+
+    // ========================================================
+    // FIND ORDER IN INDEX
+    // ========================================================
+
+    auto indexIt =
+        orderIndex.find(orderId);
+
+    if (indexIt == orderIndex.end()) {
+
+        cout << "\nOrder "
+             << orderId
+             << " cannot be modified because it does not exist."
+             << endl;
+
+        return false;
+    }
+
+
+    Side side =
+        indexIt->second.first;
+
+    int64_t oldPrice =
+        indexIt->second.second;
+
+
+    // ========================================================
+    // FIND THE ACTUAL ORDER
+    // ========================================================
+
+    Order oldOrder(
+        0,
+        0,
+        "",
+        Side::BUY,
+        OrderType::LIMIT,
+        0,
+        0,
+        0
+    );
+
+    bool found = false;
+
+
+    // --------------------------------------------------------
+    // SEARCH BUY ORDER
+    // --------------------------------------------------------
+
+    if (side == Side::BUY) {
+
+        auto priceIt =
+            buyOrders.find(oldPrice);
+
+        if (priceIt != buyOrders.end()) {
+
+            deque<Order>& orders =
+                priceIt->second;
+
+            for (auto orderIt = orders.begin();
+                 orderIt != orders.end();
+                 ++orderIt) {
+
+                if (orderIt->getOrderId() == orderId) {
+
+                    oldOrder = *orderIt;
+                    found = true;
+
+                    break;
+                }
+            }
+        }
+    }
+
+
+    // --------------------------------------------------------
+    // SEARCH SELL ORDER
+    // --------------------------------------------------------
+
+    else {
+
+        auto priceIt =
+            sellOrders.find(oldPrice);
+
+        if (priceIt != sellOrders.end()) {
+
+            deque<Order>& orders =
+                priceIt->second;
+
+            for (auto orderIt = orders.begin();
+                 orderIt != orders.end();
+                 ++orderIt) {
+
+                if (orderIt->getOrderId() == orderId) {
+
+                    oldOrder = *orderIt;
+                    found = true;
+
+                    break;
+                }
+            }
+        }
+    }
+
+
+    if (!found) {
+
+        cout << "\nOrder "
+             << orderId
+             << " was found in the index but not in the order book."
+             << endl;
+
+        return false;
+    }
+
+
+    // ========================================================
+    // CANCEL OLD ORDER
+    // ========================================================
+
+    if (!cancelOrder(orderId)) {
+
+        cout << "\nFailed to cancel old order "
+             << orderId
+             << " during modification."
+             << endl;
+
+        return false;
+    }
+
+
+    // ========================================================
+    // CREATE MODIFIED ORDER
+    // ========================================================
+
+    // We use a newer timestamp to represent
+    // the new priority of the modified order.
+    uint64_t newTimestamp =
+        oldOrder.getTimestamp() + 1;
+
+
+    Order modifiedOrder(
+        oldOrder.getOrderId(),
+        oldOrder.getTraderId(),
+        oldOrder.getSymbol(),
+        oldOrder.getSide(),
+        oldOrder.getOrderType(),
+        newPrice,
+        newQuantity,
+        newTimestamp
+    );
+
+
+    cout << "\n==================== ORDER MODIFIED ====================\n";
+
+    cout << "Order ID: "
+         << orderId
+         << endl;
+
+    cout << "Old Price: "
+         << oldOrder.getPrice()
+         << endl;
+
+    cout << "New Price: "
+         << newPrice
+         << endl;
+
+    cout << "Old Quantity: "
+         << oldOrder.getQuantity()
+         << endl;
+
+    cout << "New Quantity: "
+         << newQuantity
+         << endl;
+
+    cout << "Old Timestamp: "
+         << oldOrder.getTimestamp()
+         << endl;
+
+    cout << "New Timestamp: "
+         << newTimestamp
+         << endl;
+
+
+    // ========================================================
+    // RESUBMIT MODIFIED ORDER
+    // ========================================================
+
+    submitOrder(modifiedOrder);
+
+    return true;
+}
+
 
 // ============================================================
 // COUNT BUY ORDERS
@@ -702,6 +975,7 @@ size_t OrderBook::getBuyOrderCount() const {
     return count;
 }
 
+
 // ============================================================
 // COUNT SELL ORDERS
 // ============================================================
@@ -716,6 +990,7 @@ size_t OrderBook::getSellOrderCount() const {
 
     return count;
 }
+
 
 // ============================================================
 // PRINT BUY ORDERS
@@ -732,6 +1007,7 @@ void OrderBook::printBuyOrders() const {
         return;
     }
 
+
     for (const auto& entry : buyOrders) {
 
         cout << "Price: "
@@ -739,6 +1015,7 @@ void OrderBook::printBuyOrders() const {
              << " | Orders: "
              << entry.second.size()
              << endl;
+
 
         for (const auto& order : entry.second) {
 
@@ -752,6 +1029,7 @@ void OrderBook::printBuyOrders() const {
         }
     }
 }
+
 
 // ============================================================
 // PRINT SELL ORDERS
@@ -768,6 +1046,7 @@ void OrderBook::printSellOrders() const {
         return;
     }
 
+
     for (const auto& entry : sellOrders) {
 
         cout << "Price: "
@@ -775,6 +1054,7 @@ void OrderBook::printSellOrders() const {
              << " | Orders: "
              << entry.second.size()
              << endl;
+
 
         for (const auto& order : entry.second) {
 
@@ -789,6 +1069,7 @@ void OrderBook::printSellOrders() const {
     }
 }
 
+
 // ============================================================
 // CHECK MATCH
 // ============================================================
@@ -799,14 +1080,17 @@ bool OrderBook::canMatch() const {
         return false;
     }
 
+
     int64_t bestBuyPrice =
         buyOrders.begin()->first;
 
     int64_t bestSellPrice =
         sellOrders.begin()->first;
 
+
     return bestBuyPrice >= bestSellPrice;
 }
+
 
 // ============================================================
 // OLD MATCHING FUNCTION
@@ -822,11 +1106,13 @@ void OrderBook::matchOrders() {
         Order& sellOrder =
             sellOrders.begin()->second.front();
 
+
         uint64_t tradeQuantity =
             min(
                 buyOrder.getQuantity(),
                 sellOrder.getQuantity()
             );
+
 
         uint64_t buyOrderId =
             buyOrder.getOrderId();
@@ -843,6 +1129,7 @@ void OrderBook::matchOrders() {
         uint64_t tradeTimestamp =
             sellOrder.getTimestamp();
 
+
         // Create trade
         Trade trade(
             nextTradeId++,
@@ -855,6 +1142,7 @@ void OrderBook::matchOrders() {
         );
 
         trades.push_back(trade);
+
 
         cout << "\n==================== TRADE EXECUTED ====================\n";
 
@@ -878,15 +1166,18 @@ void OrderBook::matchOrders() {
              << trade.getQuantity()
              << endl;
 
+
         // Reduce quantities
         buyOrder.reduceQuantity(tradeQuantity);
         sellOrder.reduceQuantity(tradeQuantity);
+
 
         bool buyFilled =
             (buyOrder.getQuantity() == 0);
 
         bool sellFilled =
             (sellOrder.getQuantity() == 0);
+
 
         // Remove filled BUY
         if (buyFilled) {
@@ -898,10 +1189,12 @@ void OrderBook::matchOrders() {
 
             orderIndex.erase(filledOrderId);
 
+
             if (buyOrders.begin()->second.empty()) {
                 buyOrders.erase(buyOrders.begin());
             }
         }
+
 
         // Remove filled SELL
         if (sellFilled) {
@@ -913,12 +1206,14 @@ void OrderBook::matchOrders() {
 
             orderIndex.erase(filledOrderId);
 
+
             if (sellOrders.begin()->second.empty()) {
                 sellOrders.erase(sellOrders.begin());
             }
         }
     }
 }
+
 
 // ============================================================
 // TRADE HISTORY
@@ -935,6 +1230,7 @@ void OrderBook::printTrades() const {
 
         return;
     }
+
 
     for (const auto& trade : trades) {
 
@@ -957,11 +1253,13 @@ void OrderBook::printTrades() const {
     }
 }
 
+
 // ============================================================
 // MAIN
 // ============================================================
 
 int main() {
+
 
     // ========================================================
     // SUBMIT ORDER TEST
@@ -970,6 +1268,7 @@ int main() {
     cout << "\n================ SUBMIT ORDER TEST ================\n";
 
     OrderBook book;
+
 
     // Resting SELL
     Order restingSell(
@@ -983,12 +1282,15 @@ int main() {
         1000
     );
 
+
     book.submitOrder(restingSell);
+
 
     cout << "\nBook after SELL submission:" << endl;
 
     book.printBuyOrders();
     book.printSellOrders();
+
 
     // Incoming BUY
     Order incomingBuy(
@@ -1002,20 +1304,25 @@ int main() {
         1001
     );
 
+
     book.submitOrder(incomingBuy);
+
 
     cout << "\nBook after BUY submission:" << endl;
 
     book.printBuyOrders();
     book.printSellOrders();
 
+
     book.printTrades();
+
 
     // ========================================================
     // CANCELLATION TEST
     // ========================================================
 
     cout << "\n\n================ CANCELLATION TEST ================\n";
+
 
     // This order cannot match because
     // there are no SELL orders at this stage.
@@ -1030,11 +1337,14 @@ int main() {
         2000
     );
 
+
     book.submitOrder(cancelTest);
+
 
     cout << "\nBefore cancellation:" << endl;
 
     book.printBuyOrders();
+
 
     // Cancel order
     if (book.cancelOrder(7001)) {
@@ -1049,9 +1359,11 @@ int main() {
              << endl;
     }
 
+
     cout << "\nAfter cancellation:" << endl;
 
     book.printBuyOrders();
+
 
     // ========================================================
     // TRY TO CANCEL SAME ORDER AGAIN
@@ -1068,6 +1380,123 @@ int main() {
         cout << "\nOrder 7001 no longer exists."
              << endl;
     }
+
+
+    // ========================================================
+    // ORDER MODIFICATION TEST
+    // ========================================================
+
+    cout << "\n\n================ ORDER MODIFICATION TEST ================\n";
+
+
+    // --------------------------------------------------------
+    // Create two BUY orders at the SAME price.
+    // 8001 arrives first, so it has priority.
+    // --------------------------------------------------------
+
+    Order modifyOrder1(
+        8001,
+        80,
+        "AAPL",
+        Side::BUY,
+        OrderType::LIMIT,
+        17500,
+        100,
+        3000
+    );
+
+
+    Order modifyOrder2(
+        8002,
+        81,
+        "AAPL",
+        Side::BUY,
+        OrderType::LIMIT,
+        17500,
+        100,
+        3001
+    );
+
+
+    book.submitOrder(modifyOrder1);
+    book.submitOrder(modifyOrder2);
+
+
+    cout << "\nBefore modification:" << endl;
+
+    book.printBuyOrders();
+
+
+    // --------------------------------------------------------
+    // Modify order 8001.
+    //
+    // It moves from 17500 -> 17600.
+    // --------------------------------------------------------
+
+    book.modifyOrder(
+        8001,
+        17600,
+        200
+    );
+
+
+    cout << "\nAfter modifying Order 8001:" << endl;
+
+    book.printBuyOrders();
+
+
+    // ========================================================
+    // MODIFY ORDER INTO A MATCH
+    // ========================================================
+
+    cout << "\n\n================ MODIFICATION + MATCH TEST ================\n";
+
+
+    // Resting SELL at 17700
+    Order modificationSell(
+        9001,
+        90,
+        "AAPL",
+        Side::SELL,
+        OrderType::LIMIT,
+        17700,
+        100,
+        4000
+    );
+
+
+    book.submitOrder(modificationSell);
+
+
+    cout << "\nBefore modifying BUY into matching price:" << endl;
+
+    book.printBuyOrders();
+    book.printSellOrders();
+
+
+    // Modify 8001 from 17600 -> 17700.
+    //
+    // The modified BUY should now match
+    // the resting SELL at 17700.
+    book.modifyOrder(
+        8001,
+        17700,
+        150
+    );
+
+
+    cout << "\nAfter modifying Order 8001 to 17700:" << endl;
+
+    book.printBuyOrders();
+    book.printSellOrders();
+
+
+    // ========================================================
+    // FINAL TRADE HISTORY
+    // ========================================================
+
+    book.printTrades();
+
 
     return 0;
 }
