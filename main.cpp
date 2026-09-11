@@ -390,11 +390,275 @@ void OrderBook::submitOrder(const Order& order) {
         return;
     }
 
-    // MARKET orders will be implemented later.
-    if (order.getOrderType() != OrderType::LIMIT) {
+    // ========================================================
+    // MARKET ORDERS
+    // ========================================================
 
-        cout << "\nMARKET orders are not implemented yet."
-             << endl;
+    if (order.getOrderType() == OrderType::MARKET) {
+
+        // ----------------------------------------------------
+        // MARKET BUY
+        // ----------------------------------------------------
+        // A MARKET BUY takes liquidity from the cheapest SELL
+        // orders available in the book.
+        //
+        // Important:
+        // A MARKET order NEVER rests in the order book.
+        // Any unfilled quantity is discarded.
+        // ----------------------------------------------------
+
+        if (order.getSide() == Side::BUY) {
+
+            Order incomingOrder = order;
+
+            while (
+                incomingOrder.getQuantity() > 0 &&
+                !sellOrders.empty()
+            ) {
+
+                // Best SELL = lowest available price.
+                int64_t bestSellPrice =
+                    sellOrders.begin()->first;
+
+                // Oldest SELL at the best price.
+                Order& restingOrder =
+                    sellOrders.begin()->second.front();
+
+                // Determine trade quantity.
+                uint64_t tradeQuantity =
+                    min(
+                        incomingOrder.getQuantity(),
+                        restingOrder.getQuantity()
+                    );
+
+                // Market BUY executes at the resting SELL price.
+                int64_t tradePrice =
+                    bestSellPrice;
+
+                uint64_t buyOrderId =
+                    incomingOrder.getOrderId();
+
+                uint64_t sellOrderId =
+                    restingOrder.getOrderId();
+
+                string symbol =
+                    incomingOrder.getSymbol();
+
+                uint64_t tradeTimestamp =
+                    incomingOrder.getTimestamp();
+
+                // Create trade.
+                Trade trade(
+                    nextTradeId++,
+                    buyOrderId,
+                    sellOrderId,
+                    symbol,
+                    tradePrice,
+                    tradeQuantity,
+                    tradeTimestamp
+                );
+
+                trades.push_back(trade);
+
+                cout << "\n==================== TRADE EXECUTED ====================\n";
+
+                cout << "Trade ID: "
+                     << trade.getTradeId()
+                     << endl;
+
+                cout << "Buy Order ID: "
+                     << trade.getBuyOrderId()
+                     << endl;
+
+                cout << "Sell Order ID: "
+                     << trade.getSellOrderId()
+                     << endl;
+
+                cout << "Symbol: "
+                     << trade.getSymbol()
+                     << endl;
+
+                cout << "Trade Price: "
+                     << trade.getPrice()
+                     << endl;
+
+                cout << "Trade Quantity: "
+                     << trade.getQuantity()
+                     << endl;
+
+                // Reduce both orders.
+                incomingOrder.reduceQuantity(tradeQuantity);
+                restingOrder.reduceQuantity(tradeQuantity);
+
+                // If resting SELL is completely filled,
+                // remove it from the book and index.
+                if (restingOrder.getQuantity() == 0) {
+
+                    uint64_t filledOrderId =
+                        restingOrder.getOrderId();
+
+                    sellOrders.begin()->second.pop_front();
+
+                    orderIndex.erase(filledOrderId);
+
+                    if (sellOrders.begin()->second.empty()) {
+                        sellOrders.erase(sellOrders.begin());
+                    }
+                }
+            }
+
+            // MARKET BUY never rests in the book.
+            if (incomingOrder.getQuantity() > 0) {
+
+                cout << "\nMARKET BUY Order "
+                     << incomingOrder.getOrderId()
+                     << " expired with "
+                     << incomingOrder.getQuantity()
+                     << " shares unfilled."
+                     << endl;
+            }
+            else {
+
+                cout << "\nMARKET BUY Order "
+                     << incomingOrder.getOrderId()
+                     << " completely filled."
+                     << endl;
+            }
+
+            return;
+        }
+
+        // ----------------------------------------------------
+        // MARKET SELL
+        // ----------------------------------------------------
+        // A MARKET SELL takes liquidity from the highest BUY
+        // orders available in the book.
+        //
+        // Important:
+        // A MARKET order NEVER rests in the order book.
+        // Any unfilled quantity is discarded.
+        // ----------------------------------------------------
+
+        if (order.getSide() == Side::SELL) {
+
+            Order incomingOrder = order;
+
+            while (
+                incomingOrder.getQuantity() > 0 &&
+                !buyOrders.empty()
+            ) {
+
+                // Best BUY = highest available price.
+                int64_t bestBuyPrice =
+                    buyOrders.begin()->first;
+
+                // Oldest BUY at the best price.
+                Order& restingOrder =
+                    buyOrders.begin()->second.front();
+
+                // Determine trade quantity.
+                uint64_t tradeQuantity =
+                    min(
+                        incomingOrder.getQuantity(),
+                        restingOrder.getQuantity()
+                    );
+
+                // Market SELL executes at the resting BUY price.
+                int64_t tradePrice =
+                    bestBuyPrice;
+
+                uint64_t buyOrderId =
+                    restingOrder.getOrderId();
+
+                uint64_t sellOrderId =
+                    incomingOrder.getOrderId();
+
+                string symbol =
+                    incomingOrder.getSymbol();
+
+                uint64_t tradeTimestamp =
+                    incomingOrder.getTimestamp();
+
+                // Create trade.
+                Trade trade(
+                    nextTradeId++,
+                    buyOrderId,
+                    sellOrderId,
+                    symbol,
+                    tradePrice,
+                    tradeQuantity,
+                    tradeTimestamp
+                );
+
+                trades.push_back(trade);
+
+                cout << "\n==================== TRADE EXECUTED ====================\n";
+
+                cout << "Trade ID: "
+                     << trade.getTradeId()
+                     << endl;
+
+                cout << "Buy Order ID: "
+                     << trade.getBuyOrderId()
+                     << endl;
+
+                cout << "Sell Order ID: "
+                     << trade.getSellOrderId()
+                     << endl;
+
+                cout << "Symbol: "
+                     << trade.getSymbol()
+                     << endl;
+
+                cout << "Trade Price: "
+                     << trade.getPrice()
+                     << endl;
+
+                cout << "Trade Quantity: "
+                     << trade.getQuantity()
+                     << endl;
+
+                // Reduce both orders.
+                incomingOrder.reduceQuantity(tradeQuantity);
+                restingOrder.reduceQuantity(tradeQuantity);
+
+                // If resting BUY is completely filled,
+                // remove it from the book and index.
+                if (restingOrder.getQuantity() == 0) {
+
+                    uint64_t filledOrderId =
+                        restingOrder.getOrderId();
+
+                    buyOrders.begin()->second.pop_front();
+
+                    orderIndex.erase(filledOrderId);
+
+                    if (buyOrders.begin()->second.empty()) {
+                        buyOrders.erase(buyOrders.begin());
+                    }
+                }
+            }
+
+            // MARKET SELL never rests in the book.
+            if (incomingOrder.getQuantity() > 0) {
+
+                cout << "\nMARKET SELL Order "
+                     << incomingOrder.getOrderId()
+                     << " expired with "
+                     << incomingOrder.getQuantity()
+                     << " shares unfilled."
+                     << endl;
+            }
+            else {
+
+                cout << "\nMARKET SELL Order "
+                     << incomingOrder.getOrderId()
+                     << " completely filled."
+                     << endl;
+            }
+
+            return;
+        }
 
         return;
     }
@@ -1393,6 +1657,252 @@ int main() {
     book.printSellOrders();
 
     book.printTrades();
+
+    // ========================================================
+    // MARKET BUY TEST
+    // ========================================================
+
+    cout << "\n\n================ MARKET BUY TEST ================\n";
+
+    OrderBook marketBuyBook;
+
+    // Cheapest SELL.
+    Order marketSell1(
+        10001,
+        100,
+        "AAPL",
+        Side::SELL,
+        OrderType::LIMIT,
+        18000,
+        120,
+        6000
+    );
+
+    // More expensive SELL.
+    Order marketSell2(
+        10002,
+        101,
+        "AAPL",
+        Side::SELL,
+        OrderType::LIMIT,
+        18100,
+        50,
+        6001
+    );
+
+    marketBuyBook.submitOrder(marketSell1);
+    marketBuyBook.submitOrder(marketSell2);
+
+    cout << "\nBook before MARKET BUY:" << endl;
+
+    marketBuyBook.printBuyOrders();
+    marketBuyBook.printSellOrders();
+
+    // MARKET BUY for 150 shares.
+    //
+    // Expected:
+    // 120 shares @ 18000
+    // 30 shares  @ 18100
+    // Remaining SELL:
+    // 20 shares  @ 18100
+    //
+    // MARKET BUY itself must NOT remain in the book.
+    Order marketBuy(
+        10003,
+        102,
+        "AAPL",
+        Side::BUY,
+        OrderType::MARKET,
+        0,
+        150,
+        6002
+    );
+
+    marketBuyBook.submitOrder(marketBuy);
+
+    cout << "\nBook after MARKET BUY:" << endl;
+
+    marketBuyBook.printBuyOrders();
+    marketBuyBook.printSellOrders();
+
+    marketBuyBook.printTrades();
+
+    // ========================================================
+    // MARKET SELL TEST
+    // ========================================================
+
+    cout << "\n\n================ MARKET SELL TEST ================\n";
+
+    OrderBook marketSellBook;
+
+    // Highest BUY.
+    Order marketBuy1(
+        10101,
+        101,
+        "AAPL",
+        Side::BUY,
+        OrderType::LIMIT,
+        18100,
+        80,
+        7000
+    );
+
+    // Lower BUY.
+    Order marketBuy2(
+        10102,
+        102,
+        "AAPL",
+        Side::BUY,
+        OrderType::LIMIT,
+        18000,
+        100,
+        7001
+    );
+
+    marketSellBook.submitOrder(marketBuy1);
+    marketSellBook.submitOrder(marketBuy2);
+
+    cout << "\nBook before MARKET SELL:" << endl;
+
+    marketSellBook.printBuyOrders();
+    marketSellBook.printSellOrders();
+
+    // MARKET SELL for 150 shares.
+    //
+    // Expected:
+    // 80 shares  @ 18100
+    // 70 shares  @ 18000
+    // Remaining BUY:
+    // 30 shares  @ 18000
+    //
+    // MARKET SELL itself must NOT remain in the book.
+    Order marketSell(
+        10103,
+        103,
+        "AAPL",
+        Side::SELL,
+        OrderType::MARKET,
+        0,
+        150,
+        7002
+    );
+
+    marketSellBook.submitOrder(marketSell);
+
+    cout << "\nBook after MARKET SELL:" << endl;
+
+    marketSellBook.printBuyOrders();
+    marketSellBook.printSellOrders();
+
+    marketSellBook.printTrades();
+
+    // ========================================================
+    // MARKET ORDER INSUFFICIENT LIQUIDITY TEST
+    // ========================================================
+
+    cout << "\n\n================ MARKET ORDER INSUFFICIENT LIQUIDITY TEST ================\n";
+
+    // --------------------------------------------------------
+    // MARKET BUY: requested quantity > available SELL quantity
+    // --------------------------------------------------------
+
+    OrderBook insufficientBuyBook;
+
+    Order limitedSell(
+        10201,
+        201,
+        "AAPL",
+        Side::SELL,
+        OrderType::LIMIT,
+        18000,
+        50,
+        8000
+    );
+
+    insufficientBuyBook.submitOrder(limitedSell);
+
+    Order largeMarketBuy(
+        10202,
+        202,
+        "AAPL",
+        Side::BUY,
+        OrderType::MARKET,
+        0,
+        100,
+        8001
+    );
+
+    insufficientBuyBook.submitOrder(largeMarketBuy);
+
+    cout << "\nBook after insufficient MARKET BUY:" << endl;
+
+    insufficientBuyBook.printBuyOrders();
+    insufficientBuyBook.printSellOrders();
+
+    insufficientBuyBook.printTrades();
+
+    // --------------------------------------------------------
+    // MARKET SELL: requested quantity > available BUY quantity
+    // --------------------------------------------------------
+
+    OrderBook insufficientSellBook;
+
+    Order limitedBuy(
+        10301,
+        301,
+        "AAPL",
+        Side::BUY,
+        OrderType::LIMIT,
+        18000,
+        40,
+        9000
+    );
+
+    insufficientSellBook.submitOrder(limitedBuy);
+
+    Order largeMarketSell(
+        10302,
+        302,
+        "AAPL",
+        Side::SELL,
+        OrderType::MARKET,
+        0,
+        100,
+        9001
+    );
+
+    insufficientSellBook.submitOrder(largeMarketSell);
+
+    cout << "\nBook after insufficient MARKET SELL:" << endl;
+
+    insufficientSellBook.printBuyOrders();
+    insufficientSellBook.printSellOrders();
+
+    insufficientSellBook.printTrades();
+
+    // --------------------------------------------------------
+    // MARKET BUY with completely empty SELL book
+    // --------------------------------------------------------
+
+    OrderBook emptyMarketBook;
+
+    Order emptyBookMarketBuy(
+        10401,
+        401,
+        "AAPL",
+        Side::BUY,
+        OrderType::MARKET,
+        0,
+        75,
+        10000
+    );
+
+    emptyMarketBook.submitOrder(emptyBookMarketBuy);
+
+    cout << "\nBook after MARKET BUY with empty SELL book:" << endl;
+
+    emptyMarketBook.printBuyOrders();
+    emptyMarketBook.printSellOrders();
 
     // ========================================================
     // CANCELLATION TEST
