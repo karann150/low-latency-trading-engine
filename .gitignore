@@ -10,3 +10,6 @@ main.exe
 
 # Other executables
 *.exe
+
+# Generated trade-history export
+trades.csv
